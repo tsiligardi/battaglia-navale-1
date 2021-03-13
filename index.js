@@ -6,11 +6,21 @@ const PORT = 8080
 const teams = {
   pippo: {
     name: "pippo",
-    password: "",
+    password: "pluto",
     score: 100,
     killedShips: [],
-    firedBullets: 10,
-    lastFiredBullet: new Date().getTime()
+    firedBullets: 0
+    // lastFiredBullet: new Date().getTime()
+  }
+}
+const teamsUpdate = (team, points, killedShip) => {
+  teams[team].score += points
+  teams[team].firedBullets++
+  if (killedShip.length !== 0)  {
+    teams[team].killedShips.push({
+      id: killedShip[0],
+      name: killedShip[1]
+    })
   }
 }
 const field = []
@@ -47,7 +57,7 @@ for (let i = 0; i < S; i++) {
     y: faker.random.number({ min: 0, max: vertical ? H - maxHp : H - 1 }),
     vertical,
     maxHp,
-    curHp: 4,
+    curHp: maxHp,
     alive: true,
     killer: null
   }
@@ -123,7 +133,7 @@ app.get("/", ({ query: { format } }, res) => {
     <body>
       <table>
         <tbody>
-          ${visibleField.map(row => `<tr>${row.map(cell => `<td>${cell.ship ? cell.ship.name : ""}</td>`).join("")}</tr>`).join("")}
+          ${visibleField.map(row => `<tr>${row.map(cell => `<td>${cell.ship ? cell.ship.name : cell.hit ? "X" : ""}</td>`).join("")}</tr>`).join("")}
         </tbody>
       </table>
     </body>
@@ -136,25 +146,58 @@ app.get("/score", (req, res) => {
   res.json([])
 })
 
-app.signup("/signup", (req, res) => {
+/* app.signup("/signup", (req, res) => {
   // team password
-})
+})*/
 app.get("/fire", ({ query: { x, y, team, password } }, res) => {
-  /*
-    1. segnare la cella come colpita
-    2. segnare eventualmente la nave come colpita (ridurre gli hp e verificare se e' morta)
-    3. assegnare il team sia alla cella che alla nave (eventuale)
+  let msg = ""
+  let points = 0
+  const killedShip = []
+  if (password === teams[team].password) {
+    if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
+      const cell = field[x - 1][y - 1]
+      if (!cell.hit) {
+        cell.hit = true
+        cell.team = team
+        const ship = cell.ship
+        if (ship) {
+          ship.curHp--
+          if (ship.curHp === 0) {
+            points = 3
+            msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
+            ship.killer = team
+            killedShip.push(ship.id, ship.name)
+          } else {
+            points = 1
+            msg = `hai colpito la nave ${ship.name} con id ${ship.id}`
+          }
+        } else {
+          msg = "acqua"
+        }
+      } else {
+        msg = `hai colpito una cella che era già stata colpita da ${cell.team}`
+        points = -1
+      }
+    } else {
+      points = -3
+      msg = "sei uscito dal campo"
+    }
+    teamsUpdate(team, points, killedShip)
+    res.status(200).json({
+      msg,
+      points,
+      status: { score: teams[team].score,
+        killedShips: teams[team].killedShips,
+        firedBullets: teams[team].firedBullets
+      }
+    })
+  } else {
+    res.sendStatus(401)
+  }/* TODO
     4. assicurarsi che il team che chiama l'endpoint non possa chiamarlo per piu' di una volta al secondo (opzionale)
-    5. definire un punteggio conseguente all'attacco:
-      a. punteggio molto negativo se si spara fuori dal campo
-      b. punteggio 0 se acqua
-      c. punteggio negativo se spari su casella gia' colpita
-      c. punteggio positivo se spari su nave ma non la uccidi
-      d. punteggio molto positivo se spari su nave e la uccidi
+    controllare bene x e y perché forse sono gitate
   */
-  res.json({
-    x, y, team
-  })
+
 })
 
 app.all("*", (req, res) => {
