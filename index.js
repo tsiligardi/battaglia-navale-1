@@ -2,7 +2,7 @@ const faker = require("faker")
 const express = require("express")
 const app = new express()
 const PORT = 8080
-// constructor dell'istanza team
+
 function Team(name, password) {
   this.name = name
   this.password = password
@@ -12,9 +12,7 @@ function Team(name, password) {
 }
 
 
-const teams = {
-  pippo: new Team("pippo", "pluto")
-}
+const teams = {}
 
 const teamsUpdate = (team, points, killedShip) => {
   teams[team].score += points
@@ -87,7 +85,42 @@ for (let i = 0; i < S; i++) {
   }
 }
 let shipsAlive = ships.length
-app.get("/", ({ query: { format } }, res) => {
+app.get("/", (req, res) => {
+  res.send (`
+  <h1>REGOLE </h1>
+  <ol>
+    <li>fare una chiamata in get all'endpoint /signup e passare una query string contenete due variabili
+      <ul>
+        <li>name a cui assegnare il nome del team</li>
+        <li>password a cui assegnare la password per poter fare fuoco</li>
+      </ul>
+    </li>
+    <li>All'endpoint /field si può visualizzare il campo di gioco. Per ricevere i dati in formato json aggiungere
+    una query string contente la chiave format=json
+    </li>
+    <li>per fare fuoco fare una chiamata all'endpoint /fire con le seguenti query string
+      <ul>
+        <li>team = nome del team</li>
+        <li>password= password del team</li>
+        <li>x= coordinata x della cella </li>
+        <li>y= coordinata y della cella</li>
+      </ul>
+      le coordinate sono 1-based
+    </li>
+    <li>PUNTI:
+      <ul>
+        <li>0 punti se si fa acqua</li>
+        <li>+1 se si colpisce la nave</li>
+        <li>+3 se si affonda la nave</li>
+        <li>+5 se si affonda l'ultima nave</li>
+        <li>-1 se si colpisce una cella già colpita da un'altro giocatore</li>
+        <li>-3 se si esce dal campo di gioco</li>
+      </ul>
+    </li>
+  </ol>
+  `)
+})
+app.get("/field", ({ query: { format } }, res) => {
   const visibleField = field.map(row => row.map(cell => ({
     x: cell.x,
     y: cell.y,
@@ -166,6 +199,10 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   let msg = ""
   let points = 0
   const killedShip = []
+  if (!x || !y || !team || !password) {
+    res.sendStatus(400)
+    return
+  }
   if (!Object.keys(teams).includes(team)) {
     res.status(400).json({ msg: "utente non trovato" })
     return
@@ -187,8 +224,10 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
               if (shipsAlive !== 0) {
                 points = 3
                 msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
+                ship.alive = false
               } else {
                 points = 5
+                ship.alive = false
                 msg = `hai affondato l'ULTIMA nave ${ship.name} con id ${ship.id}! GIOCO FINITO`
               }
             } else {
