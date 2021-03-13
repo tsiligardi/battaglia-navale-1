@@ -29,8 +29,8 @@ for (let y = 0; y < H; y++) {
       y,
       ship: null,
       hit: false
-    })    
-  } 
+    })
+  }
   field.push(row)
 }
 
@@ -68,20 +68,20 @@ for (let i = 0; i < S; i++) {
       const y = ship.vertical ? ship.y + e : ship.y
       field[y][x].ship = ship
     }
-  
+
     ships.push(ship)
     id ++
   }
 }
 
 app.get("/", ({ query: { format } }, res) => {
-  const visibleField = field.map(row => row.map(cell => ({ 
+  const visibleField = field.map(row => row.map(cell => ({
     x: cell.x,
     y: cell.y,
     hit: cell.hit,
     team: cell.team,
-    ship: cell.hit ? 
-      cell.ship ? { id: cell.ship.id, name: cell.ship.name, alive: cell.ship.alive, killer: cell.ship.killer } : null 
+    ship: cell.hit ?
+      cell.ship ? { id: cell.ship.id, name: cell.ship.name, alive: cell.ship.alive, killer: cell.ship.killer } : null
       : null
   })))
 
@@ -92,8 +92,8 @@ app.get("/", ({ query: { format } }, res) => {
     killer: ship.killer
   }))
 
-  if ( format === "json") {
-    res.json({ 
+  if (format === "json") {
+    res.json({
       field: visibleField,
       ships: visibleShipInfo
     })
@@ -137,9 +137,9 @@ app.get("/score", (req, res) => {
 })
 
 app.signup("/signup", (req, res) => {
-  //team password
+  // team password
 })
-app.get("/fire", ({ query: { x, y, team, password } }, res) => {  
+app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   /*
     1. segnare la cella come colpita
     2. segnare eventualmente la nave come colpita (ridurre gli hp e verificare se e' morta)
