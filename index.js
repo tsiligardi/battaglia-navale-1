@@ -2,17 +2,20 @@ const faker = require("faker")
 const express = require("express")
 const app = new express()
 const PORT = 8080
+// constructor dell'istanza team
+function Team(name, password) {
+  this.name = name
+  this.password = password
+  this.score = 0
+  this.killedShips = []
+  this.firedBullets = 0
+}
+
 
 const teams = {
-  pippo: {
-    name: "pippo",
-    password: "pluto",
-    score: 100,
-    killedShips: [],
-    firedBullets: 0
-    // lastFiredBullet: new Date().getTime()
-  }
+  pippo: new Team("pippo", "pluto")
 }
+
 const teamsUpdate = (team, points, killedShip) => {
   teams[team].score += points
   teams[team].firedBullets++
@@ -83,7 +86,7 @@ for (let i = 0; i < S; i++) {
     id ++
   }
 }
-
+let shipsAlive = ships.length
 app.get("/", ({ query: { format } }, res) => {
   const visibleField = field.map(row => row.map(cell => ({
     x: cell.x,
@@ -145,44 +148,69 @@ app.get("/", ({ query: { format } }, res) => {
 app.get("/score", (req, res) => {
   res.json([])
 })
-
-/* app.signup("/signup", (req, res) => {
-  // team password
-})*/
+app.get("/signup", ({ query: { name, password } }, res) => {
+  const usernames = Object.keys(teams)
+  if (!name || !password) {
+    res.sendStatus(400)
+    return
+  }
+  if (usernames.includes(name)) {
+    res.sendStatus(409)
+    return
+  } else {
+    teams[name] = new Team(name, password)
+    res.sendStatus(200)
+  }
+})
 app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   let msg = ""
   let points = 0
   const killedShip = []
+  if (!Object.keys(teams).includes(team)) {
+    res.status(400).json({ msg: "utente non trovato" })
+    return
+  }
   if (password === teams[team].password) {
-    if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
-      const cell = field[x - 1][y - 1]
-      if (!cell.hit) {
-        cell.hit = true
-        cell.team = team
-        const ship = cell.ship
-        if (ship) {
-          ship.curHp--
-          if (ship.curHp === 0) {
-            points = 3
-            msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
-            ship.killer = team
-            killedShip.push(ship.id, ship.name)
+    if (shipsAlive !== 0) {
+      if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
+        const cell = field[y - 1][x - 1]
+        if (!cell.hit) {
+          cell.hit = true
+          cell.team = team
+          const ship = cell.ship
+          if (ship) {
+            ship.curHp--
+            if (ship.curHp === 0) {
+              shipsAlive--
+              ship.killer = team
+              killedShip.push(ship.id, ship.name)
+              if (shipsAlive !== 0) {
+                points = 3
+                msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
+              } else {
+                points = 5
+                msg = `hai affondato l'ULTIMA nave ${ship.name} con id ${ship.id}! GIOCO FINITO`
+              }
+            } else {
+              points = 1
+              msg = `hai colpito la nave ${ship.name} con id ${ship.id}`
+            }
           } else {
-            points = 1
-            msg = `hai colpito la nave ${ship.name} con id ${ship.id}`
+            msg = "acqua"
           }
         } else {
-          msg = "acqua"
+          msg = `hai colpito una cella che era già stata colpita da ${cell.team}`
+          points = -1
         }
       } else {
-        msg = `hai colpito una cella che era già stata colpita da ${cell.team}`
-        points = -1
+        points = -3
+        msg = "sei uscito dal campo"
       }
     } else {
-      points = -3
-      msg = "sei uscito dal campo"
+      msg = "TUTTE LE NAVI SONO GIA' STATE AFFONDATE!! GIOCO FINITO"
     }
     teamsUpdate(team, points, killedShip)
+
     res.status(200).json({
       msg,
       points,
@@ -195,7 +223,6 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
     res.sendStatus(401)
   }/* TODO
     4. assicurarsi che il team che chiama l'endpoint non possa chiamarlo per piu' di una volta al secondo (opzionale)
-    controllare bene x e y perché forse sono gitate
   */
 
 })
