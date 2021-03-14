@@ -11,6 +11,11 @@ function Team(name, password) {
   this.firedBullets = 0
 }
 
+let alreadyFired = []
+
+setInterval(() => {
+  alreadyFired = []
+}, 1000)
 
 const teams = {}
 
@@ -207,8 +212,15 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
     res.status(400).json({ msg: "utente non trovato" })
     return
   }
+
   if (password === teams[team].password) {
     if (shipsAlive !== 0) {
+      if (alreadyFired.includes(team)) {
+        res.sendStatus(408)
+        return
+      } else {
+        alreadyFired.push(team)
+      }
       if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
         const cell = field[y - 1][x - 1]
         if (!cell.hit) {
