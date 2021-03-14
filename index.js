@@ -189,11 +189,11 @@ app.get("/score", (req, res) => {
 app.get("/signup", ({ query: { name, password } }, res) => {
   const usernames = Object.keys(teams)
   if (!name || !password) {
-    res.sendStatus(400)
+    res.sendStatus(400)// bad request
     return
   }
   if (usernames.includes(name)) {
-    res.sendStatus(409)
+    res.sendStatus(409) // conflinct (username already in use)
     return
   } else {
     teams[name] = new Team(name, password)
@@ -205,7 +205,7 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   let points = 0
   const killedShip = []
   if (!x || !y || !team || !password) {
-    res.sendStatus(400)
+    res.sendStatus(400) // bad request
     return
   }
   if (!Object.keys(teams).includes(team)) {
@@ -216,7 +216,7 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   if (password === teams[team].password) {
     if (shipsAlive !== 0) {
       if (alreadyFired.includes(team)) {
-        res.sendStatus(408)
+        res.sendStatus(408) // timeout
         return
       } else {
         alreadyFired.push(team)
@@ -271,7 +271,7 @@ app.get("/fire", ({ query: { x, y, team, password } }, res) => {
       }
     })
   } else {
-    res.sendStatus(401)
+    res.sendStatus(401) // unauthorized
   }/* TODO
     4. assicurarsi che il team che chiama l'endpoint non possa chiamarlo per piu' di una volta al secondo (opzionale)
   */
