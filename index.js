@@ -3,19 +3,16 @@ const express = require("express")
 const app = new express()
 const PORT = 8080
 
-function Team(name, password) {
-  this.name = name
-  this.password = password
-  this.score = 0
-  this.killedShips = []
-  this.firedBullets = 0
+const Team = (name, password) => {
+  return ({
+    name,
+    password,
+    score: 0,
+    killedShips: [],
+    firedBullets: 0,
+    lastFiredBullet: new Date().getTime() })
 }
 
-let alreadyFired = []
-
-setInterval(() => {
-  alreadyFired = []
-}, 1000)
 
 const teams = {}
 
@@ -89,7 +86,7 @@ for (let i = 0; i < S; i++) {
     id ++
   }
 }
-let shipsAlive = ships.length
+const shipsAlive = ships.length
 app.get("/", (req, res) => {
   res.send (`
   <h1>REGOLE </h1>
@@ -187,27 +184,19 @@ app.get("/score", (req, res) => {
   res.json([])
 })
 app.get("/signup", ({ query: { name, password } }, res) => {
-  const usernames = Object.keys(teams)
   if (!name || !password) {
-    res.sendStatus(400)// bad request
-    return
-  }
-  if (usernames.includes(name)) {
-    res.sendStatus(409) // conflinct (username already in use)
-    return
+    return res.sendStatus(400)// bad request
+
+  } else if (!teams[name]) {
+    return res.status(409).json({ msg: "username già in uso" }) // conflinct (username already in use)
   } else {
     teams[name] = new Team(name, password)
-    res.sendStatus(200)
+    res.status(200).json({ msg: "utente registrato " })
   }
 })
-app.get("/fire", ({ query: { x, y, team, password } }, res) => {
-  let msg = ""
-  let points = 0
-  const killedShip = []
-  if (!x || !y || !team || !password) {
-    res.sendStatus(400) // bad request
-    return
-  }
+
+
+
   if (!Object.keys(teams).includes(team)) {
     res.status(400).json({ msg: "utente non trovato" })
     return
