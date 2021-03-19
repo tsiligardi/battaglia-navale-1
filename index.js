@@ -3,15 +3,16 @@ const express = require("express")
 const app = new express()
 const PORT = 8080
 
-const  Team =(name, password)=>{
-  return(
-    {
-      name,
-      password,
-      point=0,
-      
-    }
-  )
+const Team = (name, password) => {
+  return ({
+    name,
+    password,
+    score: 0,
+    killedShips: [],
+    firedBullets: 0,
+    lastFiredBullet: new Date().getTime()
+  })
+
 }
 
 let alreadyFired = []
@@ -189,94 +190,85 @@ app.get("/score", (req, res) => {
   res.json([])
 })
 app.get("/signup", ({ query: { name, password } }, res) => {
-  const usernames = Object.keys(teams)
   if (!name || !password) {
-    res.sendStatus(400)// bad request
-    return
+    return res.sendStatus(400)// bad request
   }
-  if (usernames.includes(name)) {
-    res.sendStatus(409) // conflinct (username already in use)
-    return
-  } else {
-    teams[name] = new Team(name, password)
-    res.sendStatus(200)
+  if (teams[name]) {
+    return res.status(409).json({ msg: "nome già in uso" }) // conflinct (username already in use)
   }
+  teams[name] =  Team(name, password)
+  res.sendStatus(200)
 })
 app.get("/fire", ({ query: { x, y, team, password } }, res) => {
   let msg = ""
   let points = 0
   const killedShip = []
   if (!x || !y || !team || !password) {
-    res.sendStatus(400) // bad request
-    return
+    return res.sendStatus(400) // bad request
   }
-  if (!Object.keys(teams).includes(team)) {
-    res.status(400).json({ msg: "utente non trovato" })
-    return
+  if (!teams[team]) {
+    return res.status(400).json({ msg: "utente non trovato" })
+
+  }
+  if (password !== teams[team].password) {
+    return res.status(401).json({ msg: "password errata" })
   }
 
-  if (password === teams[team].password) {
-    if (shipsAlive !== 0) {
-      if (alreadyFired.includes(team)) {
-        res.sendStatus(408) // timeout
-        return
-      } else {
-        alreadyFired.push(team)
-      }
-      if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
-        const cell = field[y - 1][x - 1]
-        if (!cell.hit) {
-          cell.hit = true
-          cell.team = team
-          const ship = cell.ship
-          if (ship) {
-            ship.curHp--
-            if (ship.curHp === 0) {
-              shipsAlive--
-              ship.killer = team
-              killedShip.push(ship.id, ship.name)
-              if (shipsAlive !== 0) {
-                points = 3
-                msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
-                ship.alive = false
-              } else {
-                points = 5
-                ship.alive = false
-                msg = `hai affondato l'ULTIMA nave ${ship.name} con id ${ship.id}! GIOCO FINITO`
-              }
-            } else {
-              points = 1
-              msg = `hai colpito la nave ${ship.name} con id ${ship.id}`
-            }
+  if (shipsAlive === 0) {
+    return res.status(200).json({ msg: "tutte le navi sono state affondate. gioco finito " })
+  }
+
+  if (alreadyFired.includes(team)) {
+    return res.sendStatus(408) // timeout
+  }
+  alreadyFired.push(team)
+  if (x - 1 < W  && y - 1  < H && x - 1 >= 0 && y - 1 >= 0) {
+    const cell = field[y - 1][x - 1]
+    if (!cell.hit) {
+      cell.hit = true
+      cell.team = team
+      const ship = cell.ship
+      if (ship) {
+        ship.curHp--
+        if (ship.curHp === 0) {
+          shipsAlive--
+          ship.killer = team
+          killedShip.push(ship.id, ship.name)
+          if (shipsAlive !== 0) {
+            points = 3
+            msg = `hai affondato la nave ${ship.name} con id ${ship.id}`
+            ship.alive = false
           } else {
-            msg = "acqua"
+            points = 5
+            ship.alive = false
+            msg = `hai affondato l'ULTIMA nave ${ship.name} con id ${ship.id}! GIOCO FINITO`
           }
         } else {
-          msg = `hai colpito una cella che era già stata colpita da ${cell.team}`
-          points = -1
+          points = 1
+          msg = `hai colpito la nave ${ship.name} con id ${ship.id}`
         }
       } else {
-        points = -3
-        msg = "sei uscito dal campo"
+        msg = "acqua"
       }
     } else {
-      msg = "TUTTE LE NAVI SONO GIA' STATE AFFONDATE!! GIOCO FINITO"
+      msg = `hai colpito una cella che era già stata colpita da ${cell.team}`
+      points = -1
     }
-    teamsUpdate(team, points, killedShip)
-
-    res.status(200).json({
-      msg,
-      points,
-      status: { score: teams[team].score,
-        killedShips: teams[team].killedShips,
-        firedBullets: teams[team].firedBullets
-      }
-    })
   } else {
-    res.sendStatus(401) // unauthorized
-  }/* TODO
-    4. assicurarsi che il team che chiama l'endpoint non possa chiamarlo per piu' di una volta al secondo (opzionale)
-  */
+    points = -3
+    msg = "sei uscito dal campo"
+  }
+
+  teamsUpdate(team, points, killedShip)
+
+  res.status(200).json({
+    msg,
+    points,
+    status: { score: teams[team].score,
+      killedShips: teams[team].killedShips,
+      firedBullets: teams[team].firedBullets
+    }
+  })
 
 })
 
